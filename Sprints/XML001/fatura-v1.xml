@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<fatura>
+    <cabecalho>
+        <numero>001</numero>
+        <data>2026-10-06</data>
+        <cliente>
+            <nome>Pedro Soares</nome>
+            <morada>Avenida da Liberdade, 10, Lisboa</morada>
+            <telefone>912345678</telefone>
+        </cliente>
+    </cabecalho>
+    <produtos>
+        <produto>
+            <codigo>PRL001</codigo>
+            <designacao>Polo Ralph Lauren</designacao>
+            <quantidade>1</quantidade>
+            <preco>89.99</preco>
+        </produto>
+    </produtos>
+</fatura>

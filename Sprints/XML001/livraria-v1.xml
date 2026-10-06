@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<bookstore>
+    <book category="fashion">
+        <title lang="en">Fashion Week Paris 26/27</title>
+        <author>Emily Carter</author>
+        <year>2026</year>
+        <price>29.99</price>
+    </book>
+</bookstore>
