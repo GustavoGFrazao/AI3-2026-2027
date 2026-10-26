@@ -8,9 +8,7 @@
     <option name="selectedProviderName" value="8f013610-2b60-4c36-a988-b693adb560c2" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="31400af4-c674-4fa5-a0c6-c878b5d3a67d" name="ai3-2026-2027-1 Tarefa XML001" comment="Tarefa XML001">
-      <change afterPath="$PROJECT_DIR$/Sprints/JSON01/json01.url" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Sprints/OPENAPI01/openapi01.url" afterDir="false" />
+    <list default="true" id="31400af4-c674-4fa5-a0c6-c878b5d3a67d" name="ai3-2026-2027-1 Tarefa XML001" comment="Tarefa XML002">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <list id="417bada4-994a-472a-b2c0-4d1c25b0b7e3" name="Changes" comment="Tarefa XML001" />
@@ -25,6 +23,11 @@
     </persistenceIdMap>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="xml002" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -70,6 +73,7 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "copilot.chat.legacySessionMetadata.migrated": "true",
+    "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "master",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "/Users/cunha/Downloads/AI3-2026-2027/Sprints/JSON01",
