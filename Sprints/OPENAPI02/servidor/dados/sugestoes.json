@@ -1,0 +1,47 @@
+
+[
+  {
+    "id": 1,
+    "numeroAluno": "12345",
+    "titulo": "Melhorar o Wi-Fi da escola",
+    "descricao": "Melhorar a cobertura da rede Wi-Fi nas salas de aula.",
+    "categoria": "instalacoes",
+    "estado": "submetida",
+    "dataCriacao": "2026-10-01T10:00:00Z",
+    "dataAtualizacao": "2026-10-01T10:00:00Z",
+    "dataResolucao": null
+  },
+  {
+    "id": 2,
+    "numeroAluno": "12345",
+    "titulo": "Mais tomadas na biblioteca",
+    "descricao": "Instalar tomadas adicionais para carregar computadores portateis.",
+    "categoria": "instalacoes",
+    "estado": "em_analise",
+    "dataCriacao": "2026-10-02T10:00:00Z",
+    "dataAtualizacao": "2026-10-03T10:00:00Z",
+    "dataResolucao": null
+  },
+  {
+    "id": 3,
+    "numeroAluno": "67890",
+    "titulo": "Ampliar o horario da biblioteca",
+    "descricao": "Prolongar o horario de funcionamento durante a epoca de exames.",
+    "categoria": "servicos",
+    "estado": "resolvida",
+    "dataCriacao": "2026-10-04T10:00:00Z",
+    "dataAtualizacao": "2026-10-06T10:00:00Z",
+    "dataResolucao": "2026-10-06T10:00:00Z"
+  },
+  {
+    "id": 4,
+    "numeroAluno": "67890",
+    "titulo": "Melhorar os espacos de estudo",
+    "descricao": "Criar mais lugares de estudo em grupo.",
+    "categoria": "ensino",
+    "estado": "aceite",
+    "dataCriacao": "2026-10-05T10:00:00Z",
+    "dataAtualizacao": "2026-10-07T10:00:00Z",
+    "dataResolucao": null
+  }
+]

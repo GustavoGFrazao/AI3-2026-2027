@@ -1,0 +1,867 @@
+openapi: 3.0.3
+info:
+  title: API de Sugestões dos Alunos
+  version: 2.0.0
+  description: API para submeter sugestões, acompanhar o seu tratamento, consultar estatísticas de resolução e autenticar utilizadores através de tokens JWT.
+servers:
+  - url: https://api.estgv.exemplo/v2
+
+security:
+  - tokenJWT: []
+
+paths:
+  /sugestoes:
+    get:
+      operationId: listarSugestoes
+      summary: Listar sugestões, com filtros e paginação
+      description: >
+        Alunos autenticados podem consultar apenas as suas próprias sugestões.
+        Os utilizadores de serviços podem consultar todas as sugestões.
+      parameters:
+        - name: estado
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Estado'
+        - name: categoria
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/CodigoCategoria'
+        - name: pagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: tamanhoPagina
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Lista de sugestões devolvida com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePrivateNoCache'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaSugestoes'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+    post:
+      operationId: criarSugestao
+      summary: Submeter uma sugestão
+      description: >
+        Apenas utilizadores com o papel aluno podem submeter sugestões.
+        O número de aluno é obtido a partir do token JWT, não do corpo do pedido.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SugestaoNova'
+      responses:
+        '201':
+          description: Sugestão criada com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheNoStore'
+            Location:
+              $ref: '#/components/headers/Location'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sugestao'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/Proibido'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /sugestoes/{id}:
+    get:
+      operationId: obterSugestao
+      summary: Obter uma sugestão
+      description: >
+        Os alunos podem consultar apenas as suas próprias sugestões.
+        Os utilizadores de serviços podem consultar qualquer sugestão.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sugestão devolvida com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePrivateNoCache'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sugestao'
+              example:
+                id: 42
+                titulo: Melhorar os espaços de estudo
+                descricao: Criar mais lugares tranquilos para estudar na escola.
+                categoria: instalacoes
+                numeroAluno: '12345'
+                estado: aceite
+                dataCriacao: '2026-10-01T10:00:00Z'
+                dataAtualizacao: '2026-10-05T14:30:00Z'
+                dataResolucao: null
+        '304':
+          description: A cópia do cliente continua válida
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePrivateNoCache'
+            ETag:
+              $ref: '#/components/headers/ETag'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+    put:
+      operationId: substituirSugestao
+      summary: Editar uma sugestão ainda submetida
+      description: >
+        Apenas o aluno proprietário pode editar a sua sugestão,
+        enquanto esta estiver no estado submetida.
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - name: If-Match
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SugestaoNova'
+      responses:
+        '200':
+          description: Sugestão atualizada com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheNoStore'
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sugestao'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/Proibido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictEdit'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+    delete:
+      operationId: retirarSugestao
+      summary: Retirar uma sugestão ainda submetida
+      description: >
+        Apenas o aluno proprietário pode retirar a sua sugestão,
+        enquanto esta estiver no estado submetida.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Sugestão retirada sem conteúdo de resposta
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheNoStore'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/Proibido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictDelete'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /sugestoes/{id}/acompanhamentos:
+    get:
+      operationId: listarAcompanhamentos
+      summary: Histórico de acompanhamento, do mais antigo para o mais recente
+      description: >
+        Os alunos podem consultar apenas o histórico das suas próprias sugestões.
+        Os utilizadores de serviços podem consultar o histórico de qualquer sugestão.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Histórico de acompanhamento devolvido com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePrivateNoCache'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Acompanhamento'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+    post:
+      operationId: registarAcompanhamento
+      summary: Registar uma mudança de estado
+      description: >
+        Apenas os utilizadores com o papel servicos podem registar acompanhamentos
+        e alterar o estado das sugestões.
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcompanhamentoNovo'
+      responses:
+        '201':
+          description: Acompanhamento registado com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Acompanhamento'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/NaoAutenticado'
+        '403':
+          $ref: '#/components/responses/Proibido'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/ConflictTransition'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /estatisticas/resolucao:
+    get:
+      security: []
+      operationId: obterEstatisticasResolucao
+      summary: Totais por estado, taxa e tempo médio de resolução
+      parameters:
+        - name: anoLetivo
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{4}-[0-9]{4}$'
+      responses:
+        '200':
+          description: Estatísticas de resolução devolvidas com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePublicHour'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasResolucao'
+              example:
+                anoLetivo: '2026-2027'
+                totalSugestoes: 120
+                porEstado:
+                  submetida: 20
+                  em_analise: 30
+                  aceite: 25
+                  rejeitada: 15
+                  resolvida: 30
+                taxaResolucao: 0.25
+                tempoMedioResolucaoDias: 12.5
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /estatisticas/categorias:
+    get:
+      security: []
+      operationId: obterEstatisticasCategorias
+      summary: Os mesmos indicadores, por categoria
+      parameters:
+        - name: anoLetivo
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9]{4}-[0-9]{4}$'
+      responses:
+        '200':
+          description: Estatísticas por categoria devolvidas com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePublicHour'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstatisticasCategorias'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /categorias:
+    get:
+      security: []
+      operationId: listarCategorias
+      summary: Listar as categorias e a sua descrição
+      responses:
+        '200':
+          description: Lista de categorias devolvida com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CachePublicDay'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Categoria'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+  /tokens:
+    post:
+      security: []
+      operationId: criarToken
+      summary: Autenticar um utilizador e obter um token
+      description: >
+        Autentica um utilizador através do identificador e da palavra-passe,
+        devolvendo um token JWT quando as credenciais são válidas.
+        O token apresentado no exemplo de resposta é meramente ilustrativo
+        e não pode ser utilizado para autenticação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credenciais'
+      responses:
+        '200':
+          description: Autenticação efetuada com sucesso
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+              example:
+                token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.abc123'
+                tipo: Bearer
+                expiraEm: 3600
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/CredenciaisInvalidas'
+        default:
+          $ref: '#/components/responses/DefaultError'
+
+components:
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+  schemas:
+    Credenciais:
+      type: object
+      properties:
+        utilizador:
+          type: string
+          pattern: '^([0-9]{5,8}|[a-z]+\.[a-z]+)$'
+        palavraPasse:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+      required:
+        - utilizador
+        - palavraPasse
+
+    Token:
+      type: object
+      properties:
+        token:
+          type: string
+          pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
+        tipo:
+          type: string
+          enum:
+            - Bearer
+        expiraEm:
+          type: integer
+          minimum: 1
+      required:
+        - token
+        - tipo
+        - expiraEm
+
+    Estado:
+      type: string
+      enum:
+        - submetida
+        - em_analise
+        - aceite
+        - rejeitada
+        - resolvida
+
+    CodigoCategoria:
+      type: string
+      enum:
+        - instalacoes
+        - ensino
+        - servicos
+        - atividades
+        - outra
+
+    Categoria:
+      type: object
+      properties:
+        codigo:
+          $ref: '#/components/schemas/CodigoCategoria'
+        descricao:
+          type: string
+          minLength: 3
+          maxLength: 80
+      required:
+        - codigo
+        - descricao
+
+    SugestaoNova:
+      type: object
+      properties:
+        titulo:
+          type: string
+          minLength: 10
+          maxLength: 120
+        descricao:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        categoria:
+          $ref: '#/components/schemas/CodigoCategoria'
+      required:
+        - titulo
+        - descricao
+        - categoria
+
+    Sugestao:
+      allOf:
+        - $ref: '#/components/schemas/SugestaoNova'
+        - type: object
+          properties:
+            numeroAluno:
+              type: string
+              pattern: '^[0-9]{5,8}$'
+              readOnly: true
+            id:
+              type: integer
+              minimum: 1
+              readOnly: true
+            estado:
+              allOf:
+                - $ref: '#/components/schemas/Estado'
+              readOnly: true
+            dataCriacao:
+              type: string
+              format: date-time
+              readOnly: true
+            dataAtualizacao:
+              type: string
+              format: date-time
+              readOnly: true
+            dataResolucao:
+              type: string
+              format: date-time
+              nullable: true
+              readOnly: true
+          required:
+            - numeroAluno
+            - id
+            - estado
+            - dataCriacao
+            - dataAtualizacao
+            - dataResolucao
+
+    AcompanhamentoNovo:
+      type: object
+      properties:
+        novoEstado:
+          $ref: '#/components/schemas/Estado'
+        nota:
+          type: string
+          minLength: 5
+          maxLength: 500
+      required:
+        - novoEstado
+        - nota
+
+    Acompanhamento:
+      allOf:
+        - $ref: '#/components/schemas/AcompanhamentoNovo'
+        - type: object
+          properties:
+            id:
+              type: integer
+              minimum: 1
+              readOnly: true
+            estadoAnterior:
+              allOf:
+                - $ref: '#/components/schemas/Estado'
+              readOnly: true
+            data:
+              type: string
+              format: date-time
+              readOnly: true
+            responsavel:
+              type: string
+              minLength: 5
+              maxLength: 60
+              pattern: '^[A-Z][a-z]+ [A-Z][a-z]+$'
+              readOnly: true
+          required:
+            - id
+            - estadoAnterior
+            - data
+            - responsavel
+
+    ListaSugestoes:
+      type: object
+      properties:
+        pagina:
+          type: integer
+          minimum: 1
+        tamanhoPagina:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+          minimum: 0
+        itens:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/Sugestao'
+      required:
+        - pagina
+        - tamanhoPagina
+        - total
+        - itens
+
+    EstatisticasResolucao:
+      type: object
+      properties:
+        anoLetivo:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{4}$'
+        totalSugestoes:
+          type: integer
+          minimum: 0
+        porEstado:
+          type: object
+          properties:
+            submetida:
+              type: integer
+              minimum: 0
+            em_analise:
+              type: integer
+              minimum: 0
+            aceite:
+              type: integer
+              minimum: 0
+            rejeitada:
+              type: integer
+              minimum: 0
+            resolvida:
+              type: integer
+              minimum: 0
+          required:
+            - submetida
+            - em_analise
+            - aceite
+            - rejeitada
+            - resolvida
+        taxaResolucao:
+          type: number
+          minimum: 0
+          maximum: 1
+        tempoMedioResolucaoDias:
+          type: number
+          minimum: 0
+          nullable: true
+      required:
+        - anoLetivo
+        - totalSugestoes
+        - porEstado
+        - taxaResolucao
+        - tempoMedioResolucaoDias
+
+    EstatisticasCategorias:
+      type: object
+      properties:
+        anoLetivo:
+          type: string
+          pattern: '^[0-9]{4}-[0-9]{4}$'
+        categorias:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            type: object
+            properties:
+              categoria:
+                $ref: '#/components/schemas/Categoria'
+              total:
+                type: integer
+                minimum: 0
+              resolvidas:
+                type: integer
+                minimum: 0
+              taxaResolucao:
+                type: number
+                minimum: 0
+                maximum: 1
+            required:
+              - categoria
+              - total
+              - resolvidas
+              - taxaResolucao
+      required:
+        - anoLetivo
+        - categorias
+
+    Erro:
+      type: object
+      properties:
+        codigo:
+          type: integer
+          minimum: 400
+          maximum: 599
+        mensagem:
+          type: string
+          minLength: 1
+          maxLength: 200
+        detalhes:
+          type: array
+          items:
+            type: object
+            properties:
+              campo:
+                type: string
+              problema:
+                type: string
+            required:
+              - campo
+              - problema
+      required:
+        - codigo
+        - mensagem
+
+  securitySchemes:
+    tokenJWT:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Token obtido em POST /tokens.
+        
+        | Claim | Tipo | Significado |
+        |---|---|---|
+        | sub | string | Identificador do utilizador |
+        | nome | string | Nome do utilizador |
+        | papel | string | aluno ou servicos |
+        | iat | integer | Instante de emissão |
+        | exp | integer | Instante de expiração |
+
+  responses:
+    BadRequest:
+      description: Pedido mal formado ou dados que não cumprem o schema.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    CredenciaisInvalidas:
+      description: O identificador ou a palavra-passe são inválidos.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    NaoAutenticado:
+      description: Não foi fornecido um token válido para autenticação.
+      headers:
+        WWW-Authenticate:
+          description: Indica que é necessária autenticação Bearer.
+          schema:
+            type: string
+            enum:
+              - Bearer
+              - 'Bearer error="invalid_token"'
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    Proibido:
+      description: O utilizador autenticado não tem permissões para executar esta operação.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    NotFound:
+      description: Recurso não encontrado ou não acessível ao aluno autenticado.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    ConflictEdit:
+      description: A sugestão já não está no estado submetida e, por isso, não pode ser editada.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    ConflictDelete:
+      description: A sugestão já não está no estado submetida e, por isso, não pode ser retirada.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    ConflictTransition:
+      description: A transição de estado não é permitida ou a sugestão já está fechada; rejeitada e resolvida são estados finais.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    PreconditionFailed:
+      description: O valor de If-Match não corresponde à versão atual da sugestão.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+    DefaultError:
+      description: Erro inesperado.
+      headers:
+        Cache-Control:
+          $ref: '#/components/headers/CacheNoStore'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+
+  headers:
+    CachePublicDay:
+      description: Resposta pública reutilizável durante 24 horas.
+      schema:
+        type: string
+        enum: ['public, max-age=86400']
+
+    CachePublicHour:
+      description: Resposta pública reutilizável durante uma hora.
+      schema:
+        type: string
+        enum: ['public, max-age=3600']
+
+    CachePrivateNoCache:
+      description: A resposta pode ser guardada em cache privada, mas tem de ser revalidada.
+      schema:
+        type: string
+        enum: ['private, no-cache']
+
+    CacheNoStore:
+      description: A resposta não deve ser guardada em cache.
+      schema:
+        type: string
+        enum: ['no-store']
+
+    ETag:
+      description: Identificador da versão atual do recurso.
+      schema:
+        type: string
+
+    Location:
+      description: URL do recurso criado.
+      schema:
+        type: string
