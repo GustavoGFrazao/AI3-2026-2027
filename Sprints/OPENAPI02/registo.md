@@ -101,9 +101,9 @@ As alterações seguintes correspondem aos testes de mutação propostos no enun
 |---|---|
 | (a) Pedido `POST /v2/tokens` e respetiva resposta | Pedido efetuado com sucesso; resposta `200` com token JWT e validade de 900 segundos. |
 | (b) Cabeçalho `Authorization` no pedido das sugestões | Confirmado no separador Rede: `Authorization: Bearer <token>`. |
-| (c) Termo automático da sessão com `JWT_VALIDADE=30` | Não registado. |
-| (d) Comportamento ao recarregar a página com sessão ativa | Não registado de forma conclusiva. |
-| (e) Conteúdo de `localStorage` e `sessionStorage` | Não registado. |
+| (c) Termo automático da sessão com `JWT_VALIDADE=30` | Foi configurado temporariamente JWT_VALIDADE=30. Após iniciar sessão e aguardar a expiração do token, o cliente terminou a sessão e deixou de permitir a consulta autenticada. No final do teste, a validade foi reposta para 900 segundos. |
+| (d) Comportamento ao recarregar a página com sessão ativa | Após iniciar sessão e recarregar a página, a sessão terminou e o cliente voltou a apresentar a interface de login. |
+| (e) Conteúdo de `localStorage` e `sessionStorage` | O token é guardado na variável JavaScript tokenAtual. No código analisado, não são utilizados localStorage nem sessionStorage para persistir o token. Consequentemente, ao recarregar a página, a variável é reinicializada com null e a sessão não é recuperada automaticamente. |
 
 ## 8. Ponto 30 — Construções utilizadas
 
