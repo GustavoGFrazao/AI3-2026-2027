@@ -1,3 +1,4 @@
+
 openapi: 3.0.3
 info:
   title: API de Sugestões dos Alunos
@@ -51,6 +52,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListaSugestoes'
+              example:
+                pagina: 1
+                tamanhoPagina: 10
+                total: 0
+                itens: []
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -393,7 +399,7 @@ paths:
               example:
                 token: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.abc123'
                 tipo: Bearer
-                expiraEm: 3600
+                expiraEm: 900
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -714,7 +720,7 @@ components:
       bearerFormat: JWT
       description: |
         Token obtido em POST /tokens.
-        
+
         | Claim | Tipo | Significado |
         |---|---|---|
         | sub | string | Identificador do utilizador |
@@ -760,6 +766,9 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Erro'
+          example:
+            codigo: 401
+            mensagem: Não foi fornecido um token válido para autenticação.
 
     Proibido:
       description: O utilizador autenticado não tem permissões para executar esta operação.

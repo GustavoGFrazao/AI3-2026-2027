@@ -81,21 +81,41 @@ app.post('/v2/tokens', async (req, res, next) => {
         res.set('Cache-Control', 'no-store');
 
         const { utilizador, palavraPasse } = req.body ?? {};
+        const detalhes = [];
 
+        // Validar o formato do utilizador.
         if (
             typeof utilizador !== 'string' ||
-            typeof palavraPasse !== 'string' ||
-            utilizador.length === 0 ||
-            utilizador.length > 100 ||
-            palavraPasse.length < 8 ||
-            palavraPasse.length > 128
+            !/^(?:[0-9]{5,8}|[a-z]+\.[a-z]+)$/.test(utilizador)
         ) {
-            return res.status(400).json({
-                codigo: 400,
-                mensagem: 'As credenciais têm um formato inválido.'
+            detalhes.push({
+                campo: 'utilizador',
+                mensagem: 'Deve ser um número de aluno com 5 a 8 algarismos ou um identificador nome.apelido em minúsculas e sem acentos.'
             });
         }
 
+        // Validar o formato da palavra-passe.
+        if (
+            typeof palavraPasse !== 'string' ||
+            palavraPasse.length < 8 ||
+            palavraPasse.length > 128
+        ) {
+            detalhes.push({
+                campo: 'palavraPasse',
+                mensagem: 'A palavra-passe deve ter entre 8 e 128 caracteres.'
+            });
+        }
+
+        // Se existirem campos inválidos, responder com 400.
+        if (detalhes.length > 0) {
+            return res.status(400).json({
+                codigo: 400,
+                mensagem: 'As credenciais têm um formato inválido.',
+                detalhes
+            });
+        }
+
+        // Ler os utilizadores registados.
         const utilizadores = JSON.parse(
             await fs.readFile(caminhoUtilizadores, 'utf8')
         );
@@ -104,7 +124,7 @@ app.post('/v2/tokens', async (req, res, next) => {
             u => u.utilizador === utilizador
         );
 
-        // Compara também um hash fictício quando o utilizador não existe.
+        // Comparar também um hash fictício se o utilizador não existir.
         const hash = encontrado?.hashPalavraPasse ?? hashFicticio;
 
         const passwordValida = await bcrypt.compare(
@@ -112,6 +132,7 @@ app.post('/v2/tokens', async (req, res, next) => {
             hash
         );
 
+        // Usar a mesma resposta para os dois tipos de credenciais inválidas.
         if (!encontrado || !passwordValida) {
             return res.status(401).json({
                 codigo: 401,
@@ -119,6 +140,7 @@ app.post('/v2/tokens', async (req, res, next) => {
             });
         }
 
+        // Emitir o JWT com o algoritmo e a validade definidos.
         const token = jwt.sign(
             {
                 nome: encontrado.nome,
