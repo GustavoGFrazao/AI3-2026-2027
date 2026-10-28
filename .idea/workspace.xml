@@ -8,7 +8,9 @@
     <option name="selectedProviderName" value="8f013610-2b60-4c36-a988-b693adb560c2" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="31400af4-c674-4fa5-a0c6-c878b5d3a67d" name="ai3-2026-2027-1 Tarefa XML001" comment="Tarefa XML002">
+    <list default="true" id="31400af4-c674-4fa5-a0c6-c878b5d3a67d" name="ai3-2026-2027-1 Tarefa XML001" comment="Novas tarefas">
+      <change afterPath="$PROJECT_DIR$/Sprints/OPENAPI03/openapi03.url" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Sprints/SERVICEWORKER01/serviceworker01.url" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <list id="417bada4-994a-472a-b2c0-4d1c25b0b7e3" name="Changes" comment="Tarefa XML001" />
@@ -23,11 +25,6 @@
     </persistenceIdMap>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_BRANCH_BY_REPOSITORY">
-      <map>
-        <entry key="$PROJECT_DIR$" value="xml002" />
-      </map>
-    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="GitHubPullRequestSearchHistory">{
@@ -36,12 +33,12 @@
     &quot;assignee&quot;: &quot;cunhaestgv&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/cunhaestgv/AI3-2026-2027&quot;,
-    &quot;accountId&quot;: &quot;92f77999-afc8-4e95-b280-035af4d624a7&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/cunhaestgv/AI3-2026-2027",
+    "accountId": "a0e392a6-66b4-4d3a-b0b2-a79fc9081c32"
   }
-}</component>
+}]]></component>
   <component name="MavenImportPreferences">
     <option name="generalSettings">
       <MavenGeneralSettings>
@@ -73,13 +70,14 @@
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
     "copilot.chat.legacySessionMetadata.migrated": "true",
-    "dart.analysis.tool.window.visible": "false",
     "git-widget-placeholder": "master",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/Users/cunha/Downloads/AI3-2026-2027/Sprints/JSON01",
+    "last_opened_file_path": "/Users/ci/Downloads/AI3-2026-2027/Sprints",
     "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.jshint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.jshint": "",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "project.structure.last.edited": "Project",
@@ -90,6 +88,7 @@
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/Sprints" />
       <recent name="$PROJECT_DIR$/Sprints/JSON01" />
       <recent name="$PROJECT_DIR$/Sprints/OPENAPI01" />
       <recent name="$PROJECT_DIR$" />
@@ -156,7 +155,15 @@
       <option name="project" value="LOCAL" />
       <updated>1786618406407</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Novas tarefas">
+      <option name="closed" value="true" />
+      <created>1790888810632</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1790888810632</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <option name="createBranch" value="false" />
     <option name="commitChanges" value="false" />
     <servers />
@@ -183,7 +190,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Tarefa XML001" />
-    <option name="LAST_COMMIT_MESSAGE" value="Tarefa XML001" />
+    <MESSAGE value="Novas tarefas" />
+    <option name="LAST_COMMIT_MESSAGE" value="Novas tarefas" />
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
