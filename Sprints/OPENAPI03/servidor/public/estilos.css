@@ -1,0 +1,209 @@
+:root {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #222;
+    background: #f2f4f7;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 30px 15px;
+    background: #f2f4f7;
+    color: #222;
+    transition: background 0.2s, color 0.2s;
+}
+
+.container {
+    width: 100%;
+    max-width: 850px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+header h1 {
+    margin-bottom: 5px;
+}
+
+header p {
+    color: #666;
+}
+
+.painel {
+    background: white;
+    padding: 22px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+h2 {
+    margin-top: 0;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+label {
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+input,
+textarea,
+select {
+    width: 100%;
+    padding: 11px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font: inherit;
+    background: white;
+    color: #222;
+}
+
+textarea {
+    resize: vertical;
+}
+
+button {
+    padding: 11px 16px;
+    border: none;
+    border-radius: 6px;
+    background: #2457a6;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.88;
+}
+
+button.secundario {
+    background: #555;
+}
+
+.botoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.campo-configuracao {
+    margin-bottom: 15px;
+}
+
+.campo-configuracao label {
+    display: block;
+    margin-bottom: 7px;
+}
+
+.mensagem {
+    padding: 12px;
+    margin-bottom: 18px;
+    border-radius: 6px;
+    background: #e4edf9;
+    color: #173b70;
+}
+
+.mensagem.erro {
+    background: #fbe5e5;
+    color: #8b1d1d;
+}
+
+.mensagem.sucesso {
+    background: #e2f4e8;
+    color: #1d6535;
+}
+
+.sugestao {
+    padding: 16px;
+    margin: 12px 0;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+}
+
+.sugestao h3 {
+    margin-top: 0;
+}
+
+.sugestao p {
+    line-height: 1.5;
+}
+
+.estado {
+    display: inline-block;
+    padding: 5px 9px;
+    border-radius: 5px;
+    background: #e8edf5;
+    font-size: 13px;
+}
+
+footer {
+    text-align: center;
+    color: #777;
+    font-size: 13px;
+    margin-top: 30px;
+}
+
+/* Tema escuro */
+html[data-tema="escuro"] body {
+    background: #171a21;
+    color: #eee;
+}
+
+html[data-tema="escuro"] .painel {
+    background: #252a34;
+    color: #eee;
+}
+
+html[data-tema="escuro"] header p,
+html[data-tema="escuro"] footer {
+    color: #bbb;
+}
+
+html[data-tema="escuro"] input,
+html[data-tema="escuro"] textarea,
+html[data-tema="escuro"] select {
+    background: #171a21;
+    color: #eee;
+    border-color: #555;
+}
+
+html[data-tema="escuro"] .sugestao {
+    border-color: #555;
+}
+
+html[data-tema="escuro"] .estado {
+    background: #3a4352;
+    color: #eee;
+}
+
+html[data-tema="escuro"] .mensagem {
+    background: #263c5b;
+    color: #e4edf9;
+}
+
+html[data-tema="escuro"] .mensagem.erro {
+    background: #512929;
+    color: #ffe2e2;
+}
+
+html[data-tema="escuro"] .mensagem.sucesso {
+    background: #244a32;
+    color: #e2f4e8;
+}
+
+[hidden] {
+    display: none !important;
+}
