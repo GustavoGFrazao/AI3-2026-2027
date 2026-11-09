@@ -3,12 +3,25 @@ import {
     guardarConfiguracoes
 } from './configuracoes.js';
 
+import {
+    substituirSugestoes,
+    lerSugestoes,
+    guardarPendente,
+    lerPendentes,
+    removerPendente
+} from './bd.js';
+
+import { sincronizarPendentes as sincronizarFila } from './pendentes.js';
+
 const elementoMensagem = document.getElementById('mensagem');
+
+const estadoLigacao = document.getElementById('estadoLigacao');
 
 const zonaLogin = document.getElementById('zonaLogin');
 const zonaSessao = document.getElementById('zonaSessao');
 
 const formLogin = document.getElementById('formLogin');
+const botaoLogin = document.getElementById('botaoLogin');
 const formSugestao = document.getElementById('formSugestao');
 
 const nomeUtilizador = document.getElementById('nomeUtilizador');
@@ -31,6 +44,37 @@ const campoCategoria = document.getElementById('categoriaSugestao');
 
 let sessaoAtual = null;
 let temporizador = null;
+let estadoAtual = 'a-verificar';
+
+function mudarEstado(estado) {
+    const estadosValidos = [
+        'a-verificar',
+        'sem-sessao',
+        'com-sessao',
+        'sem-ligacao'
+    ];
+
+    if (!estadosValidos.includes(estado)) {
+        return;
+    }
+
+    estadoAtual = estado;
+    document.body.dataset.estado = estado;
+
+    estadoLigacao.textContent = {
+        'a-verificar': 'A verificar sessão…',
+        'sem-sessao': 'Sem sessão iniciada.',
+        'com-sessao': 'Sessão iniciada.',
+        'sem-ligacao': 'Sem ligação ao servidor.'
+    }[estado];
+
+    zonaLogin.hidden = estado !== 'sem-sessao';
+    zonaSessao.hidden = estado !== 'com-sessao';
+    zonaNovaSugestao.hidden =
+        estado !== 'com-sessao' ||
+        !sessaoAtual ||
+        sessaoAtual.papel !== 'aluno';
+}
 
 const ESTADOS = [
     'submetida',
@@ -142,10 +186,6 @@ function recuperarRascunho() {
 }
 
 function mostrarLogin() {
-    zonaLogin.hidden = false;
-    zonaSessao.hidden = true;
-    zonaNovaSugestao.hidden = true;
-
     sessaoAtual = null;
 
     if (temporizador) {
@@ -154,20 +194,19 @@ function mostrarLogin() {
     }
 
     contador.textContent = '--:--';
+
+    mudarEstado('sem-sessao');
 }
 
 function mostrarSessao(sessao) {
     sessaoAtual = sessao;
 
-    zonaLogin.hidden = true;
-    zonaSessao.hidden = false;
-
     nomeUtilizador.textContent = sessao.nome;
     papelUtilizador.textContent = sessao.papel;
 
-    const eAluno = sessao.papel === 'aluno';
+    mudarEstado('com-sessao');
 
-    zonaNovaSugestao.hidden = !eAluno;
+    const eAluno = sessao.papel === 'aluno';
 
     if (eAluno) {
         recuperarRascunho();
@@ -188,20 +227,19 @@ function iniciarContador(expiracao) {
         const fim = new Date(expiracao).getTime();
         const segundos = Math.max(0, Math.floor((fim - agora) / 1000));
 
-        if (segundos <= 0) {
-            clearInterval(temporizador);
-            temporizador = null;
+     if (segundos <= 0) {
+    clearInterval(temporizador);
+    temporizador = null;
 
-            limparRascunho();
-            mostrarLogin();
+    mostrarLogin();
 
-            mostrarMensagem(
-                'A sessão expirou. Inicia sessão novamente.',
-                'erro'
-            );
+    mostrarMensagem(
+        'A sessão expirou. Inicia sessão novamente.',
+        'erro'
+    );
 
-            return;
-        }
+    return;
+}
 
         const minutos = Math.floor(segundos / 60);
         const restantes = segundos % 60;
@@ -216,6 +254,9 @@ function iniciarContador(expiracao) {
 }
 
 async function verificarSessao() {
+    mudarEstado('a-verificar');
+    esconderMensagem();
+
     try {
         const resposta = await fetch('/v2/sessao', {
             method: 'GET',
@@ -223,7 +264,6 @@ async function verificarSessao() {
         });
 
         if (resposta.status === 401) {
-            limparRascunho();
             mostrarLogin();
             return;
         }
@@ -236,8 +276,19 @@ async function verificarSessao() {
 
         mostrarSessao(sessao);
     } catch (erro) {
-        mostrarLogin();
-        mostrarMensagem(erro.message, 'erro');
+        sessaoAtual = null;
+
+        if (temporizador) {
+            clearInterval(temporizador);
+            temporizador = null;
+        }
+
+        mudarEstado('sem-ligacao');
+
+        mostrarMensagem(
+            'Não foi possível contactar o servidor. Verifica a tua ligação.',
+            'erro'
+        );
     }
 }
 
@@ -250,6 +301,9 @@ formLogin.addEventListener('submit', async (evento) => {
         palavraPasse: document.getElementById('palavraPasse').value
     };
 
+    botaoLogin.disabled = true;
+    botaoLogin.textContent = 'A iniciar sessão...';
+
     try {
         const resposta = await fetch('/v2/sessao', {
             method: 'POST',
@@ -260,20 +314,52 @@ formLogin.addEventListener('submit', async (evento) => {
             body: JSON.stringify(dados)
         });
 
-        const resultado = await resposta.json();
+        let resultado = {};
+
+        try {
+            resultado = await resposta.json();
+        } catch {
+            resultado = {};
+        }
 
         if (!resposta.ok) {
+            if (resposta.status === 400 || resposta.status === 401) {
+                mostrarMensagem(
+                    resultado.mensagem ||
+                    'Utilizador ou palavra-passe incorretos.',
+                    'erro'
+                );
+
+                document.getElementById('palavraPasse').value = '';
+                document.getElementById('palavraPasse').focus();
+
+                return;
+            }
+
             throw new Error(
-                resultado.mensagem || 'Não foi possível iniciar sessão.'
+                resultado.mensagem ||
+                'Não foi possível iniciar sessão.'
             );
         }
 
         formLogin.reset();
+
         mostrarSessao(resultado);
 
-        mostrarMensagem('Sessão iniciada com sucesso.', 'sucesso');
+        mostrarMensagem(
+            'Sessão iniciada com sucesso.',
+            'sucesso'
+        );
     } catch (erro) {
-        mostrarMensagem(erro.message, 'erro');
+        mudarEstado('sem-ligacao');
+
+        mostrarMensagem(
+            'Não foi possível contactar o servidor. Verifica a tua ligação.',
+            'erro'
+        );
+    } finally {
+        botaoLogin.disabled = false;
+        botaoLogin.textContent = 'Entrar';
     }
 });
 
@@ -298,7 +384,10 @@ async function terminarSessao() {
 
         mostrarMensagem('Sessão terminada.', 'sucesso');
     } catch (erro) {
-        mostrarMensagem(erro.message, 'erro');
+        mostrarMensagem(
+            'Não foi possível contactar o servidor. Verifica a tua ligação.',
+            'erro'
+        );
     }
 }
 
@@ -309,10 +398,14 @@ async function pedidoAutenticado(url, opcoes = {}) {
     });
 
     if (resposta.status === 401) {
-        limparRascunho();
         mostrarLogin();
 
-        throw new Error('A sessão terminou. Inicia sessão novamente.');
+        mostrarMensagem(
+            'A sessão terminou. Inicia sessão novamente.',
+            'erro'
+        );
+
+        throw new Error('A sessão terminou.');
     }
 
     return resposta;
@@ -390,6 +483,22 @@ function apresentarSugestoes(sugestoes) {
     }
 }
 
+async function consultarSugestoesOffline() {
+    try {
+        const sugestoes = await lerSugestoes(
+            lerConfiguracoes().ordenacao
+        );
+
+        apresentarSugestoes(sugestoes);
+
+        estadoLista.textContent +=
+            ' (dados guardados neste dispositivo)';
+    } catch (erro) {
+        estadoLista.textContent =
+            'Não foi possível carregar as sugestões guardadas.';
+    }
+}
+
 async function consultarSugestoes() {
     esconderMensagem();
     estadoLista.textContent = 'A carregar sugestões...';
@@ -401,7 +510,8 @@ async function consultarSugestoes() {
 
         if (!resposta.ok) {
             throw new Error(
-                resultado.mensagem || 'Não foi possível carregar as sugestões.'
+                resultado.mensagem ||
+                'Não foi possível carregar as sugestões.'
             );
         }
 
@@ -409,10 +519,18 @@ async function consultarSugestoes() {
             ? resultado
             : (resultado.itens || []);
 
-        apresentarSugestoes(sugestoes);
-    } catch (erro) {
-        estadoLista.textContent = '';
-        mostrarMensagem(erro.message, 'erro');
+        // Guardar as sugestões recebidas da API na IndexedDB
+        await substituirSugestoes(sugestoes);
+
+        // Apresentar as sugestões guardadas
+        const sugestoesGuardadas = await lerSugestoes(
+            lerConfiguracoes().ordenacao
+        );
+
+        apresentarSugestoes(sugestoesGuardadas);
+
+        } catch (erro) {
+        await consultarSugestoesOffline();
     }
 }
 
@@ -425,6 +543,15 @@ async function submeterSugestao(evento) {
         descricao: campoDescricao.value.trim(),
         categoria: campoCategoria.value
     };
+
+    // Verificar se existe uma sessão de aluno
+    if (!sessaoAtual || sessaoAtual.papel !== 'aluno') {
+        mostrarMensagem(
+            'Só os alunos podem submeter sugestões.',
+            'erro'
+        );
+        return;
+    }
 
     try {
         const resposta = await pedidoAutenticado('/v2/sugestoes', {
@@ -439,19 +566,98 @@ async function submeterSugestao(evento) {
 
         if (!resposta.ok) {
             throw new Error(
-                resultado.mensagem || 'Não foi possível submeter a sugestão.'
+                resultado.mensagem ||
+                'Não foi possível submeter a sugestão.'
             );
         }
 
         limparRascunho();
 
-        mostrarMensagem('Sugestão submetida com sucesso!', 'sucesso');
+        mostrarMensagem(
+            'Sugestão submetida com sucesso!',
+            'sucesso'
+        );
 
         await consultarSugestoes();
     } catch (erro) {
-        mostrarMensagem(erro.message, 'erro');
+        // Guardar a sugestão para envio posterior
+        try {
+            await guardarPendente({
+                user: sessaoAtual.utilizador,
+                titulo: dados.titulo,
+                descricao: dados.descricao,
+                categoria: dados.categoria
+            });
+
+            limparRascunho();
+
+            mostrarMensagem(
+                'Sem ligação ao servidor. A sugestão foi guardada neste dispositivo e será enviada mais tarde.',
+                'sucesso'
+            );
+        } catch (erroBD) {
+            mostrarMensagem(
+                'Não foi possível enviar nem guardar a sugestão. O rascunho foi mantido.',
+                'erro'
+            );
+        }
     }
 }
+
+async function sincronizarPendentes() {
+    if (!sessaoAtual || sessaoAtual.papel !== 'aluno') {
+        return;
+    }
+
+    let pendentes;
+
+    try {
+        pendentes = await lerPendentes();
+    } catch (erro) {
+        console.error('Não foi possível ler as sugestões pendentes:', erro);
+        return;
+    }
+
+    for (const pendente of pendentes) {
+        try {
+            const resposta = await pedidoAutenticado('/v2/sugestoes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    titulo: pendente.titulo,
+                    descricao: pendente.descricao,
+                    categoria: pendente.categoria
+                })
+            });
+
+            const resultado = await resposta.json();
+
+            if (!resposta.ok) {
+                throw new Error(
+                    resultado.mensagem || 'Não foi possível enviar a sugestão.'
+                );
+            }
+
+            await removerPendente(pendente.idLocal);
+        } catch (erro) {
+            console.error(
+                'Não foi possível sincronizar a sugestão pendente:',
+                erro
+            );
+
+            // Mantém esta sugestão na IndexedDB para tentar mais tarde.
+            break;
+        }
+    }
+   }
+
+window.addEventListener('online', async () => {
+    await sincronizarFila();
+    await consultarSugestoes();
+});
+
 
 botaoSugestoes.addEventListener('click', consultarSugestoes);
 botaoLogout.addEventListener('click', terminarSessao);
@@ -463,4 +669,5 @@ campoDescricao.addEventListener('input', guardarRascunho);
 campoCategoria.addEventListener('change', guardarRascunho);
 
 iniciarConfiguracoes();
+mudarEstado('a-verificar');
 verificarSessao();
