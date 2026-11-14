@@ -1,3 +1,4 @@
+
 import {
     lerPendentes,
     confirmarPendente,
@@ -6,69 +7,105 @@ import {
 
 const URL_API = '/v2/sugestoes';
 
-async function sincronizarPendentes() {
-    if (!navigator.onLine) {
+let sincronizacaoEmCurso = false;
+
+async function enviarPendentes(sessao) {
+    if (
+        !navigator.onLine ||
+        !sessao ||
+        sincronizacaoEmCurso
+    ) {
         return;
     }
 
-    const pendentes = await lerPendentes();
+    sincronizacaoEmCurso = true;
 
-    for (const pendente of pendentes) {
-        // Não enviar pendentes que já tenham um erro registado
-        if (pendente.erro) {
-            continue;
-        }
+    try {
+        const pendentes = await lerPendentes();
 
-        try {
-            const resposta = await fetch(URL_API, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    titulo: pendente.titulo,
-                    descricao: pendente.descricao,
-                    categoria: pendente.categoria
-                })
-            });
+        // Enviar apenas sugestões do utilizador autenticado,
+        // pela ordem em que foram criadas.
+        const fila = pendentes
+            .filter(p => p.utilizador === sessao.utilizador)
+            .sort((a, b) =>
+                new Date(a.criadaEm) - new Date(b.criadaEm)
+            );
 
-            if (resposta.status === 201) {
-                const sugestao = await resposta.json();
-
-                await confirmarPendente(
-                    pendente.idLocal,
-                    sugestao
-                );
-
+        for (const pendente of fila) {
+            if (pendente.erro) {
                 continue;
             }
 
-            if (resposta.status === 400) {
-                await marcarErro(
-                    pendente.idLocal,
-                    'Os dados da sugestão são inválidos.'
-                );
+            try {
+                const resposta = await fetch(URL_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        titulo: pendente.titulo,
+                        descricao: pendente.descricao,
+                        categoria: pendente.categoria
+                    })
+                });
 
-                continue;
-            }
+                if (resposta.status === 201) {
+                    const sugestao = await resposta.json();
 
-            if (resposta.status === 401) {
-                // A sessão expirou ou deixou de ser válida.
-                // Mantemos os pendentes para tentar depois de novo login.
+                    await confirmarPendente(
+                        pendente.idLocal,
+                        sugestao
+                    );
+
+                    continue;
+                }
+
+                if (resposta.status === 400) {
+                    let mensagem = 'Os dados da sugestão são inválidos.';
+
+                    try {
+                        const resultado = await resposta.json();
+                        mensagem = resultado.mensagem || mensagem;
+                    } catch {
+                        // Mantém a mensagem padrão.
+                    }
+
+                    await marcarErro(
+                        pendente.idLocal,
+                        mensagem
+                    );
+
+                    continue;
+                }
+
+                if (resposta.status === 401) {
+                    const restantes = await lerPendentes();
+
+                    return {
+                        sessaoExpirada: true,
+                        totalPendentes: restantes.filter(
+                            p => p.utilizador === sessao.utilizador
+                        ).length
+                    };
+                }
+
+                // Outros erros: parar e manter os restantes.
+                break;
+
+            } catch (erro) {
+                // Falha de ligação: manter os pendentes.
                 break;
             }
-
-            // Outros erros do servidor: parar a sincronização.
-            break;
-
-        } catch (erro) {
-            // Sem ligação ou falha de rede: manter os pendentes.
-            break;
         }
+
+        return { sessaoExpirada: false };
+
+    } finally {
+        sincronizacaoEmCurso = false;
     }
 }
 
 export {
-    sincronizarPendentes
+    enviarPendentes
 };

@@ -40,6 +40,13 @@
     A verificar sessão…
 </p>
 
+<div id="zonaAtualizacao" hidden>
+    <p>Está disponível uma nova versão da aplicação.</p>
+    <button id="botaoAtualizar" type="button">
+        Atualizar a aplicação
+    </button>
+</div>
+
     <section id="zonaLogin" class="painel">
         <h2>Iniciar sessão</h2>
 
@@ -86,6 +93,24 @@
             </button>
         </div>
 
+<dialog id="dialogLogout">
+    <h2>Sugestões por enviar</h2>
+    <p>
+        Ainda tens sugestões pendentes. Queres mesmo terminar sessão?
+        As sugestões pendentes serão eliminadas deste dispositivo.
+    </p>
+
+    <div class="botoes">
+        <button id="confirmarLogout" type="button">
+            Terminar sessão
+        </button>
+
+        <button id="cancelarLogout" type="button" class="secundario">
+            Continuar sessão
+        </button>
+    </div>
+</dialog>
+
         <section id="zonaNovaSugestao" hidden>
             <h2>Nova sugestão</h2>
 
@@ -111,17 +136,19 @@
                 ></textarea>
 
                 <label for="categoriaSugestao">Categoria</label>
-                <select id="categoriaSugestao" name="categoria" required>
-                    <option value="">Seleciona uma categoria</option>
-                    <option value="instalacoes">Instalações</option>
-                    <option value="ensino">Ensino</option>
-                    <option value="servicos">Serviços</option>
-                    <option value="atividades">Atividades</option>
-                    <option value="outra">Outra</option>
-                </select>
+               <select id="categoriaSugestao" name="categoria" required>
+    <option value="">A carregar categorias...</option>
+</select>
 
                 <button type="submit">Submeter sugestão</button>
             </form>
+        </section>
+                <section id="zonaPendentes" class="painel" aria-live="polite">
+            <h2>Sugestões por enviar</h2>
+            <p id="estadoPendentes">
+                Não existem sugestões pendentes.
+            </p>
+            <div id="listaPendentes"></div>
         </section>
 
         <section id="zonaSugestoes" aria-live="polite">

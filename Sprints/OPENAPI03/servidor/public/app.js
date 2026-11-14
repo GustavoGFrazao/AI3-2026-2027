@@ -1,21 +1,27 @@
 import {
-    lerConfiguracoes,
-    guardarConfiguracoes
-} from './configuracoes.js';
-
-import {
     substituirSugestoes,
     lerSugestoes,
     guardarPendente,
     lerPendentes,
-    removerPendente
+    removerPendente,
+    lerProprietario,
+    lerUltimaAtualizacao,
+    guardarProprietario,
+    limparBD
 } from './bd.js';
 
-import { sincronizarPendentes as sincronizarFila } from './pendentes.js';
+import { enviarPendentes } from './pendentes.js';
+import {
+    lerConfiguracoes,
+    guardarConfiguracoes
+} from './configuracoes.js';
 
 const elementoMensagem = document.getElementById('mensagem');
 
 const estadoLigacao = document.getElementById('estadoLigacao');
+
+const zonaAtualizacao = document.getElementById('zonaAtualizacao');
+const botaoAtualizar = document.getElementById('botaoAtualizar');
 
 const zonaLogin = document.getElementById('zonaLogin');
 const zonaSessao = document.getElementById('zonaSessao');
@@ -34,6 +40,8 @@ const botaoLogout = document.getElementById('botaoLogout');
 const zonaNovaSugestao = document.getElementById('zonaNovaSugestao');
 const estadoLista = document.getElementById('estadoLista');
 const listaSugestoes = document.getElementById('listaSugestoes');
+const estadoPendentes = document.getElementById('estadoPendentes');
+const listaPendentes = document.getElementById('listaPendentes');
 
 const campoTema = document.getElementById('tema');
 const campoOrdenacao = document.getElementById('ordenacao');
@@ -41,6 +49,10 @@ const campoOrdenacao = document.getElementById('ordenacao');
 const campoTitulo = document.getElementById('tituloSugestao');
 const campoDescricao = document.getElementById('descricaoSugestao');
 const campoCategoria = document.getElementById('categoriaSugestao');
+
+const dialogLogout = document.getElementById('dialogLogout');
+const confirmarLogout = document.getElementById('confirmarLogout');
+const cancelarLogout = document.getElementById('cancelarLogout');
 
 let sessaoAtual = null;
 let temporizador = null;
@@ -67,6 +79,7 @@ function mudarEstado(estado) {
         'com-sessao': 'Sessão iniciada.',
         'sem-ligacao': 'Sem ligação ao servidor.'
     }[estado];
+        botaoLogout.disabled = estado === 'sem-ligacao';
 
     zonaLogin.hidden = estado !== 'sem-sessao';
     zonaSessao.hidden = estado !== 'com-sessao';
@@ -107,6 +120,61 @@ function esconderMensagem() {
     elementoMensagem.hidden = true;
     elementoMensagem.textContent = '';
     elementoMensagem.className = 'mensagem';
+}
+
+async function carregarCategorias() {
+    campoCategoria.disabled = true;
+
+    try {
+        const resposta = await fetch('/v2/categorias');
+
+        if (!resposta.ok) {
+            throw new Error('Não foi possível carregar as categorias.');
+        }
+
+        const resultado = await resposta.json();
+        const categorias = Array.isArray(resultado)
+            ? resultado
+            : resultado.itens || [];
+
+        campoCategoria.replaceChildren();
+
+        const opcaoInicial = document.createElement('option');
+        opcaoInicial.value = '';
+        opcaoInicial.textContent = 'Seleciona uma categoria';
+        campoCategoria.appendChild(opcaoInicial);
+
+        categorias.forEach(categoria => {
+            const opcao = document.createElement('option');
+            opcao.value = categoria.codigo;
+            opcao.textContent = categoria.descricao;
+            campoCategoria.appendChild(opcao);
+        });
+
+        campoCategoria.disabled = categorias.length === 0;
+
+        if (categorias.length === 0) {
+            mostrarMensagem(
+                'Não existem categorias disponíveis. Não é possível submeter sugestões.',
+                'erro'
+            );
+        }
+
+    } catch (erro) {
+        campoCategoria.replaceChildren();
+
+        const opcao = document.createElement('option');
+        opcao.value = '';
+        opcao.textContent = 'Categorias indisponíveis';
+        campoCategoria.appendChild(opcao);
+
+        campoCategoria.disabled = true;
+
+        mostrarMensagem(
+            'Não foi possível carregar as categorias.',
+            'erro'
+        );
+    }
 }
 
 function aplicarConfiguracoes(configuracoes) {
@@ -215,6 +283,21 @@ function mostrarSessao(sessao) {
     }
 
     iniciarContador(sessao.expiracao);
+   enviarPendentes(sessao).then(async resultado => {
+    await mostrarPendentes();
+
+    if (resultado && resultado.sessaoExpirada) {
+        mostrarLogin();
+
+        mostrarMensagem(
+            `Há ${resultado.totalPendentes} sugestões por enviar. Entre de novo para as enviar.`,
+            'erro'
+        );
+    }
+}).catch(erro => {
+    console.error('Erro ao enviar sugestões pendentes:', erro);
+});
+mostrarPendentes();
 }
 
 function iniciarContador(expiracao) {
@@ -274,7 +357,22 @@ async function verificarSessao() {
 
         const sessao = await resposta.json();
 
+        // Verificar quem é o proprietário da cópia local
+        const proprietario = await lerProprietario();
+
+        // Se for um utilizador diferente, limpar os dados anteriores
+        if (
+            proprietario &&
+            proprietario.utilizador !== sessao.utilizador
+        ) {
+            await limparBD();
+        }
+
+        // Guardar o novo proprietário
+        await guardarProprietario(sessao);
+
         mostrarSessao(sessao);
+
     } catch (erro) {
         sessaoAtual = null;
 
@@ -292,6 +390,7 @@ async function verificarSessao() {
     }
 }
 
+
 formLogin.addEventListener('submit', async (evento) => {
     evento.preventDefault();
     esconderMensagem();
@@ -302,7 +401,7 @@ formLogin.addEventListener('submit', async (evento) => {
     };
 
     botaoLogin.disabled = true;
-    botaoLogin.textContent = 'A iniciar sessão...';
+    botaoLogin.textContent = 'A entrar…';
 
     try {
         const resposta = await fetch('/v2/sessao', {
@@ -325,24 +424,35 @@ formLogin.addEventListener('submit', async (evento) => {
         if (!resposta.ok) {
             if (resposta.status === 400 || resposta.status === 401) {
                 mostrarMensagem(
-                    resultado.mensagem ||
-                    'Utilizador ou palavra-passe incorretos.',
+                    resultado.mensagem || 'Utilizador ou palavra-passe incorretos.',
                     'erro'
                 );
 
                 document.getElementById('palavraPasse').value = '';
                 document.getElementById('palavraPasse').focus();
-
                 return;
             }
 
             throw new Error(
-                resultado.mensagem ||
-                'Não foi possível iniciar sessão.'
+                resultado.mensagem || 'Não foi possível iniciar sessão.'
             );
         }
 
         formLogin.reset();
+
+        // Verificar o proprietário da cópia local
+        const proprietario = await lerProprietario();
+
+        // Se for outro utilizador, limpar os dados anteriores
+        if (
+            proprietario &&
+            proprietario.utilizador !== resultado.utilizador
+        ) {
+            await limparBD();
+        }
+
+        // Guardar o novo proprietário
+        await guardarProprietario(resultado);
 
         mostrarSessao(resultado);
 
@@ -350,6 +460,7 @@ formLogin.addEventListener('submit', async (evento) => {
             'Sessão iniciada com sucesso.',
             'sucesso'
         );
+
     } catch (erro) {
         mudarEstado('sem-ligacao');
 
@@ -357,14 +468,32 @@ formLogin.addEventListener('submit', async (evento) => {
             'Não foi possível contactar o servidor. Verifica a tua ligação.',
             'erro'
         );
+
     } finally {
         botaoLogin.disabled = false;
         botaoLogin.textContent = 'Entrar';
     }
 });
 
-async function terminarSessao() {
-    esconderMensagem();
+
+async function terminarSessao(confirmado = false) {
+    if (document.body.dataset.estado === 'sem-ligacao') {
+        mostrarMensagem(
+            'Não é possível terminar sessão sem ligação ao servidor.',
+            'erro'
+        );
+        return;
+    }
+
+    const pendentes = await lerPendentes();
+    const minhasPendentes = pendentes.filter(
+        p => p.utilizador === sessaoAtual?.utilizador
+    );
+
+    if (minhasPendentes.length > 0 && !confirmado) {
+        dialogLogout.showModal();
+        return;
+    }
 
     try {
         const resposta = await fetch('/v2/sessao', {
@@ -372,17 +501,30 @@ async function terminarSessao() {
             credentials: 'same-origin'
         });
 
-        if (!resposta.ok && resposta.status !== 401) {
+        if (resposta.status !== 204) {
+            if (resposta.status === 401) {
+                mostrarLogin();
+                mostrarMensagem('A sessão expirou. Entre de novo.', 'erro');
+                return;
+            }
+
             throw new Error('Não foi possível terminar a sessão.');
         }
 
+        await limparBD();
         limparRascunho();
+        dialogLogout.close();
         mostrarLogin();
 
+        document.getElementById('utilizador').focus();
         listaSugestoes.replaceChildren();
+        listaPendentes.replaceChildren();
+
         estadoLista.textContent = 'Inicia sessão para consultar sugestões.';
+        estadoPendentes.textContent = 'Não existem sugestões pendentes.';
 
         mostrarMensagem('Sessão terminada.', 'sucesso');
+
     } catch (erro) {
         mostrarMensagem(
             'Não foi possível contactar o servidor. Verifica a tua ligação.',
@@ -405,7 +547,9 @@ async function pedidoAutenticado(url, opcoes = {}) {
             'erro'
         );
 
-        throw new Error('A sessão terminou.');
+        const erro = new Error('A sessão terminou.');
+        erro.status = 401;
+        throw erro;
     }
 
     return resposta;
@@ -483,17 +627,110 @@ function apresentarSugestoes(sugestoes) {
     }
 }
 
+async function mostrarPendentes() {
+    try {
+        const pendentes = await lerPendentes();
+
+        listaPendentes.innerHTML = '';
+
+        const pendentesDoUtilizador = pendentes.filter(
+            pendente =>
+                pendente.utilizador === sessaoAtual?.utilizador
+        );
+
+        if (pendentesDoUtilizador.length === 0) {
+            estadoPendentes.textContent =
+                'Não existem sugestões pendentes.';
+            return;
+        }
+
+        estadoPendentes.textContent =
+            `${pendentesDoUtilizador.length} sugestão(ões) por enviar.`;
+
+        pendentesDoUtilizador.forEach(pendente => {
+            const artigo = document.createElement('article');
+
+            const titulo = document.createElement('h3');
+            titulo.textContent = pendente.titulo;
+
+            const descricao = document.createElement('p');
+            descricao.textContent = pendente.descricao;
+
+            const categoria = document.createElement('p');
+            categoria.textContent = `Categoria: ${pendente.categoria}`;
+
+            const estado = document.createElement('p');
+            estado.textContent = pendente.erro
+                ? `Erro: ${pendente.erro}`
+                : 'Por enviar';
+
+            const botaoEliminar = document.createElement('button');
+            botaoEliminar.type = 'button';
+            botaoEliminar.textContent = 'Descartar';
+
+            botaoEliminar.addEventListener('click', async () => {
+                await removerPendente(pendente.idLocal);
+                await mostrarPendentes();
+            });
+
+            artigo.append(
+                titulo,
+                descricao,
+                categoria,
+                estado,
+                botaoEliminar
+            );
+
+            listaPendentes.appendChild(artigo);
+        });
+
+    } catch (erro) {
+        console.error('Erro ao carregar sugestões pendentes:', erro);
+
+        estadoPendentes.textContent =
+            'Não foi possível carregar as sugestões pendentes.';
+    }
+}
+
 async function consultarSugestoesOffline() {
     try {
+        // Verificar o proprietário da cópia local
+        const proprietario = await lerProprietario();
+
+        // Sem proprietário ou com sessão expirada: não mostrar a cópia
+        if (
+            !proprietario ||
+            !proprietario.expiracao ||
+            new Date(proprietario.expiracao).getTime() <= Date.now()
+        ) {
+            estadoLista.textContent =
+                'Não existe uma cópia local disponível para esta sessão.';
+            listaSugestoes.innerHTML = '';
+            return;
+        }
+
+        // Ler sugestões guardadas na IndexedDB
         const sugestoes = await lerSugestoes(
             lerConfiguracoes().ordenacao
         );
 
         apresentarSugestoes(sugestoes);
 
-        estadoLista.textContent +=
-            ' (dados guardados neste dispositivo)';
+const ultimaAtualizacao = await lerUltimaAtualizacao();
+
+const horaCopia = ultimaAtualizacao
+    ? new Date(ultimaAtualizacao).toLocaleTimeString('pt-PT', {
+        hour: '2-digit',
+        minute: '2-digit'
+    })
+    : '--:--';
+
+estadoLista.textContent =
+    `${proprietario.nome} — Cópia de ${horaCopia} — pode estar desatualizada.`;
+
     } catch (erro) {
+        console.error('Erro ao carregar a cópia offline:', erro);
+
         estadoLista.textContent =
             'Não foi possível carregar as sugestões guardadas.';
     }
@@ -529,9 +766,20 @@ async function consultarSugestoes() {
 
         apresentarSugestoes(sugestoesGuardadas);
 
+        const horaAtualizacao = new Date().toLocaleTimeString('pt-PT', {
+    hour: '2-digit',
+    minute: '2-digit'
+});
+
+estadoLista.textContent = `Atualizado às ${horaAtualizacao}`;
+
         } catch (erro) {
-        await consultarSugestoesOffline();
+    if (erro.status === 401) {
+        return;
     }
+
+    await consultarSugestoesOffline();
+}
 }
 
 async function submeterSugestao(evento) {
@@ -565,11 +813,14 @@ async function submeterSugestao(evento) {
         const resultado = await resposta.json();
 
         if (!resposta.ok) {
-            throw new Error(
-                resultado.mensagem ||
-                'Não foi possível submeter a sugestão.'
-            );
-        }
+    const erro = new Error(
+        resultado.mensagem ||
+        'Não foi possível submeter a sugestão.'
+    );
+
+    erro.status = resposta.status;
+    throw erro;
+}
 
         limparRascunho();
 
@@ -579,15 +830,24 @@ async function submeterSugestao(evento) {
         );
 
         await consultarSugestoes();
-    } catch (erro) {
-        // Guardar a sugestão para envio posterior
+    }  catch (erro) {
+    if (erro.status === 401) {
+        return;
+    }
+
+if (erro.status) {
+    mostrarMensagem(erro.message, 'erro');
+    return;
+}
+
+    // Guardar a sugestão para envio posterior
         try {
             await guardarPendente({
-                user: sessaoAtual.utilizador,
-                titulo: dados.titulo,
-                descricao: dados.descricao,
-                categoria: dados.categoria
-            });
+    titulo: dados.titulo,
+    descricao: dados.descricao,
+    categoria: dados.categoria
+}, sessaoAtual.utilizador);
+await mostrarPendentes();
 
             limparRascunho();
 
@@ -604,70 +864,98 @@ async function submeterSugestao(evento) {
     }
 }
 
-async function sincronizarPendentes() {
-    if (!sessaoAtual || sessaoAtual.papel !== 'aluno') {
-        return;
-    }
-
-    let pendentes;
-
-    try {
-        pendentes = await lerPendentes();
-    } catch (erro) {
-        console.error('Não foi possível ler as sugestões pendentes:', erro);
-        return;
-    }
-
-    for (const pendente of pendentes) {
-        try {
-            const resposta = await pedidoAutenticado('/v2/sugestoes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    titulo: pendente.titulo,
-                    descricao: pendente.descricao,
-                    categoria: pendente.categoria
-                })
-            });
-
-            const resultado = await resposta.json();
-
-            if (!resposta.ok) {
-                throw new Error(
-                    resultado.mensagem || 'Não foi possível enviar a sugestão.'
-                );
-            }
-
-            await removerPendente(pendente.idLocal);
-        } catch (erro) {
-            console.error(
-                'Não foi possível sincronizar a sugestão pendente:',
-                erro
-            );
-
-            // Mantém esta sugestão na IndexedDB para tentar mais tarde.
-            break;
-        }
-    }
-   }
-
 window.addEventListener('online', async () => {
-    await sincronizarFila();
-    await consultarSugestoes();
+    await verificarSessao();
+
+    if (sessaoAtual) {
+        await enviarPendentes(sessaoAtual);
+        await mostrarPendentes();
+        await consultarSugestoes();
+    }
 });
 
 
 botaoSugestoes.addEventListener('click', consultarSugestoes);
 botaoLogout.addEventListener('click', terminarSessao);
+confirmarLogout.addEventListener('click', () => {
+    terminarSessao(true);
+});
 
+cancelarLogout.addEventListener('click', () => {
+    dialogLogout.close();
+});
 formSugestao.addEventListener('submit', submeterSugestao);
 
 campoTitulo.addEventListener('input', guardarRascunho);
 campoDescricao.addEventListener('input', guardarRascunho);
 campoCategoria.addEventListener('change', guardarRascunho);
 
+
 iniciarConfiguracoes();
+carregarCategorias();
 mudarEstado('a-verificar');
 verificarSessao();
+
+// Registar o Service Worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        try {
+            const registo = await navigator.serviceWorker.register('./sw.js');
+
+            console.log(
+                'Service Worker registado com sucesso:',
+                registo
+            );
+
+            // Verificar se já existe uma atualização à espera
+            if (registo.waiting && navigator.serviceWorker.controller) {
+                zonaAtualizacao.hidden = false;
+            }
+
+            // Detetar quando é encontrada uma nova versão
+            registo.addEventListener('updatefound', () => {
+                const novoServiceWorker = registo.installing;
+
+                if (!novoServiceWorker) {
+                    return;
+                }
+
+                novoServiceWorker.addEventListener('statechange', () => {
+                    if (
+                        novoServiceWorker.state === 'installed' &&
+                        navigator.serviceWorker.controller
+                    ) {
+                        zonaAtualizacao.hidden = false;
+                    }
+                });
+            });
+
+        } catch (erro) {
+            console.error(
+                'Erro ao registar o Service Worker:',
+                erro
+            );
+        }
+    });
+}
+
+// Ativar a nova versão do Service Worker
+botaoAtualizar.addEventListener('click', async () => {
+    const registo = await navigator.serviceWorker.getRegistration();
+
+    if (registo && registo.waiting) {
+        registo.waiting.postMessage({
+            tipo: 'ativar'
+        });
+    }
+});
+
+// Recarregar a página quando a nova versão assumir o controlo
+let paginaRecarregada = false;
+
+navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!paginaRecarregada) {
+        paginaRecarregada = true;
+        window.location.reload();
+    }
+});

@@ -465,6 +465,27 @@ function guardarProprietario(sessao) {
     });
 }
 
+function lerUltimaAtualizacao() {
+    return abrirBD().then((bd) => {
+        return new Promise((resolve, reject) => {
+            const transacao = bd.transaction('meta', 'readonly');
+            const store = transacao.objectStore('meta');
+            const pedido = store.get('ultimaAtualizacao');
+
+            pedido.onsuccess = () => {
+                resolve(pedido.result?.valor || null);
+            };
+
+            pedido.onerror = () => {
+                reject(
+                    pedido.error ||
+                    new Error('Não foi possível ler a última atualização.')
+                );
+            };
+        });
+    });
+}
+
 function lerProprietario() {
     return abrirBD().then((bd) => {
         return new Promise((resolve, reject) => {
@@ -529,5 +550,6 @@ export {
     confirmarPendente,
     guardarProprietario,
     lerProprietario,
-    limparBD
+    limparBD,
+    lerUltimaAtualizacao
 };
