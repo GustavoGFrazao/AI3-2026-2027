@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API de Sugestões</title>
+    <link rel="stylesheet" href="estilos.css">
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+<main class="container">
+    <header>
+        <h1>API de Sugestões</h1>
+        <p>Escola Superior de Tecnologia</p>
+    </header>
+
+    <div id="mensagem" class="mensagem" role="alert" hidden></div>
+
+    <section id="zonaLogin" class="painel">
+        <h2>Iniciar sessão</h2>
+
+        <form id="formLogin">
+            <label for="utilizador">Utilizador</label>
+            <input
+                    id="utilizador"
+                    name="utilizador"
+                    type="text"
+                    autocomplete="username"
+                    maxlength="100"
+                    required
+            >
+
+            <label for="palavraPasse">Palavra-passe</label>
+            <input
+                    id="palavraPasse"
+                    name="palavraPasse"
+                    type="password"
+                    autocomplete="current-password"
+                    minlength="8"
+                    maxlength="128"
+                    required
+            >
+
+            <button type="submit">Entrar</button>
+        </form>
+    </section>
+
+    <section id="zonaSessao" class="painel" hidden>
+        <h2>Sessão iniciada</h2>
+
+        <p><strong>Nome:</strong> <span id="nomeUtilizador"></span></p>
+        <p><strong>Papel:</strong> <span id="papelUtilizador"></span></p>
+        <p><strong>Tempo restante:</strong> <span id="contador">--:--</span></p>
+
+        <div class="botoes">
+            <button id="botaoSugestoes" type="button">
+                As minhas sugestões
+            </button>
+            <button id="botaoLogout" class="secundario" type="button">
+                Terminar sessão
+            </button>
+        </div>
+
+        <section id="zonaSugestoes" aria-live="polite">
+            <h2>Sugestões</h2>
+            <p id="estadoLista">Seleciona o botão para consultar sugestões.</p>
+            <div id="listaSugestoes"></div>
+        </section>
+    </section>
+
+    <footer>
+        <p>Projeto académico — Aplicações para a Internet III</p>
+    </footer>
+</main>
+</body>
+</html>
