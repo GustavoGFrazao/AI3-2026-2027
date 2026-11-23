@@ -1,0 +1,1 @@
+// Módulo provisório da base de dados local.

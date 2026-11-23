@@ -1,0 +1,12 @@
+{
+  "name": "reporta-servidor",
+  "version": "1.0.0",
+  "description": "Servidor da API e PWA Reporta",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node --env-file=.env servidor.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
