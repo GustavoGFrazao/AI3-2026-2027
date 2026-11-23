@@ -1,0 +1,486 @@
+openapi: 3.0.3
+
+info:
+  title: API Reporta
+  description: API da aplicação Reporta para registo, consulta e reforço de ocorrências.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000
+
+tags:
+  - name: Categorias
+    description: Operações relacionadas com categorias
+  - name: Ocorrencias
+    description: Operações relacionadas com ocorrências
+  - name: Administracao
+    description: Operações administrativas
+
+paths:
+
+  /v1/categorias:
+    get:
+      tags:
+        - Categorias
+      summary: Obter categorias disponíveis
+      description: Devolve todas as categorias de ocorrências e os respetivos raios de deteção.
+      responses:
+        '200':
+          description: Lista de categorias
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Categoria'
+
+  /v1/ocorrencias/semelhantes:
+    get:
+      tags:
+        - Ocorrencias
+      summary: Procurar ocorrências semelhantes
+      description: Procura ocorrências próximas da localização indicada e da mesma categoria.
+      parameters:
+        - name: categoria
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: lat
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          required: true
+          schema:
+            type: number
+        - name: X-Cidadao
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de ocorrências candidatas ordenadas por distância
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - candidatas
+                properties:
+                  candidatas:
+                    type: array
+                    maxItems: 5
+                    items:
+                      type: object
+                      required:
+                        - ocorrencia
+                        - distancia
+                      properties:
+                        ocorrencia:
+                          $ref: '#/components/schemas/Ocorrencia'
+                        distancia:
+                          type: number
+                          description: Distância em metros
+        '400':
+          description: Parâmetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '401':
+          description: Cidadão não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /v1/ocorrencias:
+    get:
+      tags:
+        - Ocorrencias
+      summary: Obter ocorrências não resolvidas
+      description: Devolve ocorrências não resolvidas dentro da área geográfica indicada.
+      parameters:
+        - name: bbox
+          in: query
+          required: true
+          description: Limites geográficos da área a consultar
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de ocorrências não resolvidas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ocorrencia'
+        '400':
+          description: BBox inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+    post:
+      tags:
+        - Ocorrencias
+      summary: Criar ocorrência
+      description: Cria uma ocorrência ou reforça uma ocorrência existente.
+      parameters:
+        - name: X-Cidadao
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: Chave de idempotência para evitar operações duplicadas
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - categoria
+                - descricao
+                - localizacao
+              properties:
+                categoria:
+                  type: string
+                descricao:
+                  type: string
+                localizacao:
+                  $ref: '#/components/schemas/Localizacao'
+                fotografia:
+                  type: string
+                  format: binary
+                recusadas:
+                  type: array
+                  description: IDs das ocorrências semelhantes recusadas pelo cidadão
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Ocorrência criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+        '200':
+          description: Ocorrência reforçada ou já comunicada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '401':
+          description: Cidadão não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '409':
+          description: Conflito na operação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /v1/ocorrencias/{id}/reforcos:
+    post:
+      tags:
+        - Ocorrencias
+      summary: Reforçar ocorrência existente
+      description: Permite reforçar uma ocorrência existente.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-Cidadao
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comentario:
+                  type: string
+      responses:
+        '201':
+          description: Ocorrência reforçada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+        '200':
+          description: Ocorrência já comunicada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+        '400':
+          description: Dados inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '401':
+          description: Cidadão não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '409':
+          description: Conflito na operação
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '410':
+          description: Ocorrência já resolvida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /v1/ocorrencias/{id}/fotografia:
+    get:
+      tags:
+        - Ocorrencias
+      summary: Obter fotografia de ocorrência
+      description: Devolve a fotografia associada à ocorrência.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Fotografia da ocorrência
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Fotografia ou ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /v1/ocorrencias/alteracoes:
+    get:
+      tags:
+        - Ocorrencias
+      summary: Obter alterações de ocorrências
+      description: Devolve alterações nas ocorrências desde o cursor indicado.
+      parameters:
+        - name: desde
+          in: query
+          required: true
+          description: Cursor a partir do qual são consultadas as alterações
+          schema:
+            type: integer
+            minimum: 0
+        - name: X-Cidadao
+          in: header
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de alterações e novo cursor
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - alteracoes
+                  - cursor
+                properties:
+                  alteracoes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ocorrencia'
+                  cursor:
+                    type: integer
+        '400':
+          description: Cursor inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '401':
+          description: Cidadão não autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+  /v1/admin/ocorrencias/{id}:
+    patch:
+      tags:
+        - Administracao
+      summary: Atualizar estado de ocorrência
+      description: Permite ao administrador alterar o estado de uma ocorrência.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-Admin-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - estado
+              properties:
+                estado:
+                  type: string
+      responses:
+        '200':
+          description: Estado da ocorrência atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ocorrencia'
+        '403':
+          description: Acesso administrativo não autorizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+        '404':
+          description: Ocorrência não encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+
+components:
+
+  schemas:
+
+    Categoria:
+      type: object
+      required:
+        - id
+        - nome
+        - raio
+      properties:
+        id:
+          type: string
+        nome:
+          type: string
+        raio:
+          type: number
+          description: Raio de deteção de ocorrências semelhantes em metros
+
+    Localizacao:
+      type: object
+      required:
+        - lat
+        - lng
+      properties:
+        lat:
+          type: number
+        lng:
+          type: number
+        precisao:
+          type: number
+          description: Precisão GPS em metros
+
+    Ocorrencia:
+      type: object
+      required:
+        - id
+        - categoria
+        - descricao
+        - localizacao
+        - temFotografia
+        - estado
+        - comunicacoes
+        - criadaEm
+        - atualizadaEm
+        - versao
+      properties:
+        id:
+          type: integer
+        categoria:
+          type: string
+        descricao:
+          type: string
+        localizacao:
+          $ref: '#/components/schemas/Localizacao'
+        temFotografia:
+          type: boolean
+        estado:
+          type: string
+        comunicacoes:
+          type: integer
+        criadaEm:
+          type: string
+          format: date-time
+        atualizadaEm:
+          type: string
+          format: date-time
+        versao:
+          type: integer
+
+    Erro:
+      type: object
+      required:
+        - codigo
+        - mensagem
+      properties:
+        codigo:
+          type: string
+        mensagem:
+          type: string
